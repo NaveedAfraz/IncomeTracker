@@ -4,7 +4,7 @@ import type { Project, Transaction } from '../types';
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5001/api' 
+    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5001/api' 
   }),
   tagTypes: ['Project'],
   endpoints: (builder) => ({
