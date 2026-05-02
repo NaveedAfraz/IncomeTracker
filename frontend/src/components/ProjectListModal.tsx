@@ -80,7 +80,7 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
       return b.totalAmount - a.totalAmount;
     });
 
-  const totalAmount = baseProjects.reduce((sum, p) => {
+  const filteredTotalAmount = filteredProjects.reduce((sum, p) => {
     if (type === 'pending') return sum + p.pendingAmount;
     if (type === 'received') return sum + p.receivedAmount;
     return sum + p.totalAmount;
@@ -103,7 +103,7 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">{title}</h2>
-              <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">{baseProjects.length} project{baseProjects.length !== 1 ? 's' : ''}</p>
+              <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">{filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
           <div className="flex items-center gap-4 sm:gap-6">
@@ -112,7 +112,7 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
                 {type === 'pending' ? 'Total Due' : type === 'received' ? 'Total Received' : 'Total Value'}
               </p>
               <p className={cn("text-lg sm:text-2xl font-bold leading-none", valueColor)}>
-                {formatCurrency(totalAmount)}
+                {formatCurrency(filteredTotalAmount)}
               </p>
             </div>
             <button
