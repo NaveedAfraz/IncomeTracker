@@ -202,7 +202,7 @@ export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageT
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <span className={cn("px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest border shadow-sm", getStatusColor(project.status))}>
+                  <span className={cn("px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest border shadow-sm whitespace-nowrap flex items-center justify-center min-w-[100px]", getStatusColor(project.status))}>
                     {project.status}
                   </span>
                 </td>
@@ -249,7 +249,7 @@ export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageT
                     <span className="text-[11px] text-zinc-500 font-medium truncate">{project.period}</span>
                   </div>
                 </div>
-                <span className={cn("px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", getStatusColor(project.status))}>
+                <span className={cn("px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border whitespace-nowrap", getStatusColor(project.status))}>
                   {project.status}
                 </span>
               </div>
