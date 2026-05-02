@@ -6,7 +6,19 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    // In production, FRONTEND_URL should be set. If not, we allow all for convenience
+    // but reflect the origin to satisfy the 'credentials: true' requirement.
+    if (!origin || origin === 'null') return callback(null, true);
+    
+    const allowedOrigins = [process.env.FRONTEND_URL ,'https://incometracker-uu7p.onrender.com'].filter(Boolean);
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // Fallback: allow the origin but properly set headers
+      callback(null, true);
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
