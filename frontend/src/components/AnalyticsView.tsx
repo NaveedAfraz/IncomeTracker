@@ -224,7 +224,7 @@ export const AnalyticsView = ({
                   }}
                   itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
                   labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
-                  formatter={(val: number) => [formatCurrency(val), 'Revenue']}
+                  formatter={(val: any) => [formatCurrency(val as number), 'Revenue']}
                 />
                 <Line 
                   type="monotone" 
@@ -272,7 +272,7 @@ export const AnalyticsView = ({
                       color: '#fff'
                     }}
                     itemStyle={{ color: '#fff' }}
-                    formatter={(val: number) => formatCurrency(val)}
+                    formatter={(val: any) => formatCurrency(val as number)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -320,7 +320,7 @@ export const AnalyticsView = ({
                     color: '#fff'
                   }}
                   itemStyle={{ color: '#fff' }}
-                  formatter={(val: number) => formatCurrency(val)}
+                  formatter={(val: any) => formatCurrency(val as number)}
                   cursor={{ fill: '#ffffff05' }}
                 />
                 <Bar 
