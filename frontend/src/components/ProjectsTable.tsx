@@ -5,17 +5,37 @@ import { ChevronDown, ChevronUp, Search, Plus, CreditCard, Filter, User } from '
 
 interface ProjectsTableProps {
   projects: Project[];
+  searchTerm: string;
+  setSearchTerm: (s: string) => void;
+  filterType: string;
+  setFilterType: (s: string) => void;
+  filterStatus: string;
+  setFilterStatus: (s: string) => void;
+  filterYear: string;
+  setFilterYear: (s: string) => void;
+  availableYears: string[];
   onAddProject: () => void;
   onEditProject: (project: Project) => void;
   onManageTransactions: (project: Project) => void;
 }
 
-export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageTransactions }: ProjectsTableProps) => {
+export const ProjectsTable = ({ 
+  projects, 
+  searchTerm, 
+  setSearchTerm, 
+  filterType, 
+  setFilterType, 
+  filterStatus, 
+  setFilterStatus,
+  filterYear,
+  setFilterYear,
+  availableYears,
+  onAddProject, 
+  onEditProject, 
+  onManageTransactions 
+}: ProjectsTableProps) => {
   const [sortField, setSortField] = useState<keyof Project>('period');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('All');
-  const [filterStatus, setFilterStatus] = useState('All');
 
   const handleSort = (field: keyof Project) => {
     if (field === sortField) {
@@ -45,15 +65,7 @@ export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageT
     }
   };
 
-  const filteredAndSortedProjects = projects
-    .filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            p.client.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = filterType === 'All' || p.type === filterType;
-      const matchesStatus = filterStatus === 'All' || p.status === filterStatus;
-      
-      return matchesSearch && matchesType && matchesStatus;
-    })
+  const filteredAndSortedProjects = [...projects]
     .sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
@@ -69,6 +81,15 @@ export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageT
       if (strA > strB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
+
+  const totals = filteredAndSortedProjects.reduce(
+    (acc, project) => ({
+      total: acc.total + project.totalAmount,
+      received: acc.received + project.receivedAmount,
+      pending: acc.pending + project.pendingAmount,
+    }),
+    { total: 0, received: 0, pending: 0 }
+  );
 
   return (
     <div className="glass-card rounded-2xl overflow-hidden flex flex-col h-full border border-white/5">
@@ -98,7 +119,6 @@ export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageT
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
           <div className="flex gap-2 w-full lg:w-auto">
             <div className="relative flex-1 lg:w-36">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
@@ -128,6 +148,36 @@ export const ProjectsTable = ({ projects, onAddProject, onEditProject, onManageT
                 <option className="bg-zinc-900" value="Ongoing">Ongoing</option>
               </select>
             </div>
+            
+            <div className="relative flex-1 lg:w-32">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+              <select 
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl glass-input text-sm appearance-none bg-zinc-900 cursor-pointer text-white"
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+              >
+                <option className="bg-zinc-900" value="All">All Years</option>
+                {availableYears.map(year => (
+                  <option key={year} className="bg-zinc-900" value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Filtered Totals Summary */}
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-indigo-500/[0.03] border border-indigo-500/10">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Total Value</p>
+            <p className="text-sm sm:text-lg font-bold text-white leading-tight">{formatCurrency(totals.total)}</p>
+          </div>
+          <div className="flex flex-col gap-0.5 border-x border-white/5 px-3 sm:px-4">
+            <p className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Paid Amount</p>
+            <p className="text-sm sm:text-lg font-bold text-emerald-400 leading-tight">{formatCurrency(totals.received)}</p>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Pending Due</p>
+            <p className="text-sm sm:text-lg font-black text-rose-400 leading-tight">{formatCurrency(totals.pending)}</p>
           </div>
         </div>
       </div>

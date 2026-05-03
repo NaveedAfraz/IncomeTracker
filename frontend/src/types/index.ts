@@ -23,6 +23,7 @@ export interface Project {
   status: ProjectStatus;
   notes: string;
   transactions: Transaction[];
+  created_at?: string;
 }
 
 export interface DashboardStats {

@@ -80,11 +80,16 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
       return b.totalAmount - a.totalAmount;
     });
 
-  const filteredTotalAmount = filteredProjects.reduce((sum, p) => {
-    if (type === 'pending') return sum + p.pendingAmount;
-    if (type === 'received') return sum + p.receivedAmount;
-    return sum + p.totalAmount;
-  }, 0);
+  const totals = filteredProjects.reduce(
+    (acc, project) => ({
+      total: acc.total + project.totalAmount,
+      received: acc.received + project.receivedAmount,
+      pending: acc.pending + project.pendingAmount,
+    }),
+    { total: 0, received: 0, pending: 0 }
+  );
+
+  const headerTotal = type === 'pending' ? totals.pending : type === 'received' ? totals.received : totals.total;
 
   return (
     <div 
@@ -112,7 +117,7 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
                 {type === 'pending' ? 'Total Due' : type === 'received' ? 'Total Received' : 'Total Value'}
               </p>
               <p className={cn("text-lg sm:text-2xl font-bold leading-none", valueColor)}>
-                {formatCurrency(filteredTotalAmount)}
+                {formatCurrency(headerTotal)}
               </p>
             </div>
             <button
@@ -162,6 +167,22 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
               <option className="bg-zinc-900 text-white" value="name-asc">Name (A-Z)</option>
               <option className="bg-zinc-900 text-white" value="name-desc">Name (Z-A)</option>
             </select>
+          </div>
+        </div>
+        
+        {/* Filtered Totals Summary */}
+        <div className="px-4 py-3 border-b border-white/5 bg-indigo-500/[0.03] grid grid-cols-3 gap-3 shrink-0">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Total Value</p>
+            <p className="text-sm font-bold text-white leading-tight">{formatCurrency(totals.total)}</p>
+          </div>
+          <div className="flex flex-col gap-0.5 border-x border-white/5 px-3">
+            <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Paid Amount</p>
+            <p className="text-sm font-bold text-emerald-400 leading-tight">{formatCurrency(totals.received)}</p>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Pending Due</p>
+            <p className="text-sm font-black text-rose-400 leading-tight">{formatCurrency(totals.pending)}</p>
           </div>
         </div>
 
