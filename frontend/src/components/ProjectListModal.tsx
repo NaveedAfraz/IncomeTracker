@@ -89,15 +89,25 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
     });
 
   const totals = filteredProjects.reduce(
-    (acc, project) => ({
-      total: acc.total + project.totalAmount,
-      received: acc.received + project.receivedAmount,
-      pending: acc.pending + project.pendingAmount,
-    }),
-    { total: 0, received: 0, pending: 0 }
+    (acc, project) => {
+      const isFailed = project.status === 'Failed';
+      return {
+        total: acc.total + project.totalAmount,
+        received: acc.received + project.receivedAmount,
+        pending: acc.pending + (isFailed ? 0 : project.pendingAmount),
+        failed: acc.failed + (isFailed ? project.pendingAmount : 0),
+      };
+    },
+    { total: 0, received: 0, pending: 0, failed: 0 }
   );
 
-  const headerTotal = type === 'pending' ? totals.pending : type === 'received' ? totals.received : totals.total;
+  const headerTotal = type === 'pending' 
+    ? totals.pending 
+    : type === 'failed' 
+    ? totals.failed 
+    : type === 'received' 
+    ? totals.received 
+    : totals.total;
 
   return (
     <div 
@@ -122,7 +132,7 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="text-right">
               <p className="text-[10px] sm:text-xs text-zinc-500 mb-0.5 sm:mb-1">
-                {type === 'pending' ? 'Total Due' : type === 'received' ? 'Total Received' : 'Total Value'}
+                {type === 'pending' ? 'Total Due' : type === 'failed' ? 'Total Failed' : type === 'received' ? 'Total Received' : 'Total Value'}
               </p>
               <p className={cn("text-lg sm:text-2xl font-bold leading-none", valueColor)}>
                 {formatCurrency(headerTotal)}
@@ -189,8 +199,12 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
             <p className="text-sm font-bold text-emerald-400 leading-tight">{formatCurrency(totals.received)}</p>
           </div>
           <div className="flex flex-col gap-0.5">
-            <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Pending Due</p>
-            <p className="text-sm font-black text-rose-400 leading-tight">{formatCurrency(totals.pending)}</p>
+            <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">
+              {type === 'failed' ? 'Failed Amount' : 'Pending Due'}
+            </p>
+            <p className={cn("text-sm font-black leading-tight", type === 'failed' ? "text-red-400" : "text-rose-400")}>
+              {formatCurrency(type === 'failed' ? totals.failed : totals.pending)}
+            </p>
           </div>
         </div>
 
@@ -216,6 +230,9 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
                 if (type === 'pending') {
                   displayAmount = project.pendingAmount;
                   displayLabel = 'Pending';
+                } else if (type === 'failed') {
+                  displayAmount = project.pendingAmount;
+                  displayLabel = 'Failed';
                 } else if (type === 'received') {
                   displayAmount = project.receivedAmount;
                   displayLabel = 'Received';
@@ -238,7 +255,9 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
                       "w-3 h-3 rounded-full shrink-0",
                       isHigh && type === 'pending' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] animate-pulse" : 
                       project.status === 'Completed' ? "bg-emerald-400" :
-                      project.status === 'Ongoing' ? "bg-blue-400" : "bg-amber-400"
+                      project.status === 'Ongoing' ? "bg-blue-400" :
+                      project.status === 'Failed' ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" :
+                      "bg-amber-400"
                     )} />
 
                     {/* Name */}
@@ -263,11 +282,18 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
                     <div className="hidden md:flex flex-col gap-1.5 w-32 shrink-0">
                       <div className="flex justify-between text-xs text-zinc-500 font-medium">
                         <span className="text-emerald-500/80">{pct}% paid</span>
-                        <span className="text-rose-500/80">{100 - pct}% due</span>
+                        {project.status === 'Failed' ? (
+                          <span className="text-red-500/80">{100 - pct}% failed</span>
+                        ) : (
+                          <span className="text-rose-500/80">{100 - pct}% due</span>
+                        )}
                       </div>
                       <div className="h-2 rounded-full bg-white/5 overflow-hidden border border-white/5">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500"
+                          className={cn(
+                            "h-full rounded-full",
+                            project.status === 'Failed' ? "bg-red-500" : "bg-gradient-to-r from-indigo-500 to-emerald-500"
+                          )}
                           style={{ width: `${pct}%` }}
                         />
                       </div>

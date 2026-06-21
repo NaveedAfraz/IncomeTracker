@@ -115,11 +115,14 @@ export const ProjectsTable = ({
     });
 
   const totals = filteredAndSortedProjects.reduce(
-    (acc, project) => ({
-      total: acc.total + project.totalAmount,
-      received: acc.received + project.receivedAmount,
-      pending: acc.pending + project.pendingAmount,
-    }),
+    (acc, project) => {
+      const isFailed = project.status === 'Failed';
+      return {
+        total: acc.total + project.totalAmount,
+        received: acc.received + project.receivedAmount,
+        pending: acc.pending + (isFailed ? 0 : project.pendingAmount),
+      };
+    },
     { total: 0, received: 0, pending: 0 }
   );
 
@@ -280,8 +283,12 @@ export const ProjectsTable = ({
                       <span className="font-bold text-emerald-400">{formatCurrency(project.receivedAmount)}</span>
                     </div>
                     <div className="flex justify-between w-32 pt-1 border-t border-white/5">
-                      <span className="text-zinc-500 text-[11px] uppercase font-bold">Due</span>
-                      <span className="font-black text-rose-400">{formatCurrency(project.pendingAmount)}</span>
+                      <span className="text-zinc-500 text-[11px] uppercase font-bold">
+                        {project.status === 'Failed' ? 'Failed' : 'Due'}
+                      </span>
+                      <span className={cn("font-black", project.status === 'Failed' ? "text-red-400" : "text-rose-400")}>
+                        {formatCurrency(project.pendingAmount)}
+                      </span>
                     </div>
                   </div>
                 </td>
@@ -349,8 +356,12 @@ export const ProjectsTable = ({
                   <p className="text-sm font-bold text-emerald-400">{formatCurrency(project.receivedAmount)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] text-zinc-500 font-bold uppercase mb-0.5">Due</p>
-                  <p className="text-sm font-black text-rose-400">{formatCurrency(project.pendingAmount)}</p>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase mb-0.5">
+                    {project.status === 'Failed' ? 'Failed' : 'Due'}
+                  </p>
+                  <p className={cn("text-sm font-black", project.status === 'Failed' ? "text-red-400" : "text-rose-400")}>
+                    {formatCurrency(project.pendingAmount)}
+                  </p>
                 </div>
               </div>
 
