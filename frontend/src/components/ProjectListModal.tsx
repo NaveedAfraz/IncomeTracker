@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import type { Project } from '../types';
 import { formatCurrency, cn } from '../utils/format';
-import { AlertTriangle, Clock, Briefcase, IndianRupee, CreditCard, X, Search, Filter } from 'lucide-react';
+import { AlertTriangle, Clock, Briefcase, IndianRupee, CreditCard, X, Search, Filter, Pencil, XCircle } from 'lucide-react';
 
 interface ProjectListModalProps {
-  type: 'workValue' | 'received' | 'pending' | 'projects';
+  type: 'workValue' | 'received' | 'pending' | 'projects' | 'failed';
   projects: Project[];
   onClose: () => void;
   onManageTransactions: (project: Project) => void;
+  onEdit: (project: Project) => void;
 }
 
-export const ProjectListModal = ({ type, projects, onClose, onManageTransactions }: ProjectListModalProps) => {
+export const ProjectListModal = ({ type, projects, onClose, onManageTransactions, onEdit }: ProjectListModalProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [sortOption, setSortOption] = useState('default');
@@ -32,12 +33,19 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
   let emptyMessage = '';
   
   if (type === 'pending') {
-    baseProjects = [...projects].filter(p => p.pendingAmount > 0);
+    baseProjects = [...projects].filter(p => p.pendingAmount > 0 && p.status !== 'Failed');
     title = 'Pending Dues';
     icon = <AlertTriangle className="w-6 h-6 text-rose-400" />;
     headerColor = 'bg-rose-500/10 border-rose-500/20';
     valueColor = 'text-rose-400';
     emptyMessage = 'All Cleared! No pending payments.';
+  } else if (type === 'failed') {
+    baseProjects = [...projects].filter(p => p.status === 'Failed');
+    title = 'Failed Payments (Bad Debt)';
+    icon = <XCircle className="w-6 h-6 text-red-400" />;
+    headerColor = 'bg-red-500/10 border-red-500/20';
+    valueColor = 'text-red-400';
+    emptyMessage = 'No failed payments.';
   } else if (type === 'received') {
     baseProjects = [...projects].filter(p => p.receivedAmount > 0);
     title = 'Received Payments';
@@ -62,12 +70,12 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
     })
     .sort((a, b) => {
       if (sortOption === 'amount-desc') {
-        if (type === 'pending') return b.pendingAmount - a.pendingAmount;
+        if (type === 'pending' || type === 'failed') return b.pendingAmount - a.pendingAmount;
         if (type === 'received') return b.receivedAmount - a.receivedAmount;
         return b.totalAmount - a.totalAmount;
       }
       if (sortOption === 'amount-asc') {
-        if (type === 'pending') return a.pendingAmount - b.pendingAmount;
+        if (type === 'pending' || type === 'failed') return a.pendingAmount - b.pendingAmount;
         if (type === 'received') return a.receivedAmount - b.receivedAmount;
         return a.totalAmount - b.totalAmount;
       }
@@ -75,7 +83,7 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
       if (sortOption === 'name-desc') return b.name.localeCompare(a.name);
       
       // Default sort behavior
-      if (type === 'pending') return b.pendingAmount - a.pendingAmount;
+      if (type === 'pending' || type === 'failed') return b.pendingAmount - a.pendingAmount;
       if (type === 'received') return b.receivedAmount - a.receivedAmount;
       return b.totalAmount - a.totalAmount;
     });
@@ -265,12 +273,23 @@ export const ProjectListModal = ({ type, projects, onClose, onManageTransactions
                       </div>
                     </div>
 
-                    {/* Amount */}
-                    <div className="text-right shrink-0 min-w-[100px]">
+                    {/* Amount + Edit */}
+                    <div className="text-right shrink-0 min-w-[100px] flex flex-col items-end gap-2">
                       <p className={cn("font-bold text-lg", valueColor)}>
                         {formatCurrency(displayAmount)}
                       </p>
-                      <p className="text-xs text-zinc-500 mt-0.5">{displayLabel} of {formatCurrency(project.totalAmount)}</p>
+                      <p className="text-xs text-zinc-500">{displayLabel} of {formatCurrency(project.totalAmount)}</p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClose();
+                          onEdit(project);
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/30 text-zinc-400 hover:text-indigo-300 transition-all duration-200 text-xs font-medium"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Edit
+                      </button>
                     </div>
                   </div>
                 );

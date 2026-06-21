@@ -7,6 +7,7 @@ import { TransactionsModal } from './components/TransactionsModal';
 import { PaidPendingChart } from './components/PaidPendingChart';
 import { ProjectListModal } from './components/ProjectListModal';
 import { AnalyticsView } from './components/AnalyticsView';
+import { RecentActivity } from './components/RecentActivity';
 import { Activity, LayoutDashboard, Loader2 } from 'lucide-react';
 import { cn } from './utils/format';
 import type { Project } from './types';
@@ -19,20 +20,25 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
   const [transactionsProject, setTransactionsProject] = useState<Project | undefined>();
-  const [activeCard, setActiveCard] = useState<'workValue' | 'received' | 'pending' | 'projects' | null>(null);
+  const [activeCard, setActiveCard] = useState<'workValue' | 'received' | 'pending' | 'projects' | 'failed' | null>(null);
 
   const stats = useMemo(() => {
     return projects.reduce(
-      (acc, project) => ({
-        totalWorkValue: acc.totalWorkValue + project.totalAmount,
-        totalReceived: acc.totalReceived + project.receivedAmount,
-        totalPending: acc.totalPending + project.pendingAmount,
-        numberOfProjects: acc.numberOfProjects + 1,
-      }),
+      (acc, project) => {
+        const isFailed = project.status === 'Failed';
+        return {
+          totalWorkValue: acc.totalWorkValue + project.totalAmount,
+          totalReceived: acc.totalReceived + project.receivedAmount,
+          totalPending: acc.totalPending + (isFailed ? 0 : project.pendingAmount),
+          totalFailed: acc.totalFailed + (isFailed ? project.pendingAmount : 0),
+          numberOfProjects: acc.numberOfProjects + 1,
+        };
+      },
       {
         totalWorkValue: 0,
         totalReceived: 0,
         totalPending: 0,
+        totalFailed: 0,
         numberOfProjects: 0,
       }
     );
@@ -46,16 +52,21 @@ function App() {
 
   const availableYears = useMemo(() => {
     const years = new Set<string>();
+    const addYear = (dateStr: string | null | undefined) => {
+      if (!dateStr) return;
+      const y = new Date(dateStr).getFullYear();
+      if (!isNaN(y)) years.add(y.toString());
+    };
     projects.forEach(p => {
-      if (p.created_at) {
-        const createdYear = new Date(p.created_at).getFullYear().toString();
-        years.add(createdYear);
+      addYear(p.startDate);   // real start date column
+      addYear(p.endDate);     // real end date column (null = ongoing, skip)
+      addYear(p.created_at);
+      // Fallback: parse period text for legacy rows without startDate
+      if (!p.startDate && p.period) {
+        const yearMatches = p.period.match(/\b(20\d{2})\b/g);
+        if (yearMatches) yearMatches.forEach(y => years.add(y));
       }
-      // Add years from transactions
-      p.transactions.forEach(t => {
-        const txYear = new Date(t.date).getFullYear().toString();
-        years.add(txYear);
-      });
+      p.transactions.forEach(t => addYear(t.date));
     });
     return Array.from(years).sort((a, b) => b.localeCompare(a));
   }, [projects]);
@@ -67,13 +78,41 @@ function App() {
       const matchesType = filterType === 'All' || p.type === filterType;
       const matchesStatus = filterStatus === 'All' || p.status === filterStatus;
       
-      const projectYears = new Set(p.transactions.map(t => new Date(t.date).getFullYear().toString()));
-      if (p.created_at) {
-        projectYears.add(new Date(p.created_at).getFullYear().toString());
+      if (filterYear === 'All') return matchesSearch && matchesType && matchesStatus;
+
+      const projectYears = new Set<string>();
+      const addYear = (dateStr: string | null | undefined) => {
+        if (!dateStr) return;
+        const y = new Date(dateStr).getFullYear();
+        if (!isNaN(y)) projectYears.add(y.toString());
+      };
+
+      // Use real date columns as primary source
+      if (p.startDate) {
+        addYear(p.startDate);
+        // If ongoing (no endDate), this project spans from startDate to present
+        if (!p.endDate) {
+          const startYear = new Date(p.startDate).getFullYear();
+          const currentYear = new Date().getFullYear();
+          for (let y = startYear; y <= currentYear; y++) projectYears.add(y.toString());
+        } else {
+          addYear(p.endDate);
+          // Fill years between start and end
+          const sy = new Date(p.startDate).getFullYear();
+          const ey = new Date(p.endDate).getFullYear();
+          for (let y = sy; y <= ey; y++) projectYears.add(y.toString());
+        }
+      } else {
+        // Fallback for legacy rows without startDate
+        addYear(p.created_at);
+        if (p.period) {
+          const yearMatches = p.period.match(/\b(20\d{2})\b/g);
+          if (yearMatches) yearMatches.forEach(y => projectYears.add(y));
+        }
       }
-      
-      const matchesYear = filterYear === 'All' || projectYears.has(filterYear);
-      
+      p.transactions.forEach(t => addYear(t.date));
+
+      const matchesYear = projectYears.has(filterYear);
       return matchesSearch && matchesType && matchesStatus && matchesYear;
     });
   }, [projects, searchTerm, filterType, filterStatus, filterYear]);
@@ -89,10 +128,15 @@ function App() {
             .reduce((sum, t) => sum + t.amount, 0);
         }
 
+        const isFailed = project.status === 'Failed';
+        const pending = isFailed ? 0 : (project.totalAmount - received);
+        const failed = isFailed ? (project.totalAmount - received) : 0;
+
         return {
           totalWorkValue: acc.totalWorkValue + project.totalAmount,
           totalReceived: acc.totalReceived + received,
-          totalPending: acc.totalPending + (project.totalAmount - received),
+          totalPending: acc.totalPending + pending,
+          totalFailed: acc.totalFailed + failed,
           numberOfProjects: acc.numberOfProjects + 1,
         };
       },
@@ -100,6 +144,7 @@ function App() {
         totalWorkValue: 0,
         totalReceived: 0,
         totalPending: 0,
+        totalFailed: 0,
         numberOfProjects: 0,
       }
     );
@@ -119,7 +164,7 @@ function App() {
     setTransactionsProject(project);
   };
 
-  const handleSaveProject = async (projectData: Omit<Project, 'id' | 'pendingAmount' | 'status' | 'transactions'>) => {
+  const handleSaveProject = async (projectData: Omit<Project, 'id' | 'pendingAmount' | 'status' | 'transactions'> & { statusOverride?: string }) => {
     try {
       if (editingProject) {
         await updateProject({ id: editingProject.id, changes: projectData }).unwrap();
@@ -241,8 +286,9 @@ function App() {
                   onManageTransactions={handleManageTransactions}
                 />
               </div>
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 flex flex-col gap-6">
                 <PaidPendingChart stats={filteredStats} />
+                <RecentActivity projects={projects} onManageTransactions={handleManageTransactions} />
               </div>
             </div>
           </>
@@ -283,6 +329,11 @@ function App() {
           projects={projects}
           onClose={() => setActiveCard(null)}
           onManageTransactions={handleManageTransactions}
+          onEdit={(project) => {
+            setActiveCard(null);
+            setEditingProject(project);
+            setIsModalOpen(true);
+          }}
         />
       )}
     </div>

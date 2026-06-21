@@ -23,11 +23,28 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const calculateStatus = (pending, total) => {
+const calculateStatus = (pending, total, override = null) => {
+  let status = override;
+  if (status === 'Completed' && pending > 0) {
+    status = null;
+  }
+  if (status && ['Ongoing', 'Completed', 'Pending', 'High Pending', 'Failed'].includes(status)) return status;
   if (total === 0) return 'Ongoing';
   if (pending <= 0) return 'Completed';
   if (pending > total * 0.5) return 'High Pending';
   return 'Pending';
+};
+
+// Build human-readable period string from real dates
+const buildPeriod = (startDate, endDate) => {
+  if (!startDate) return '';
+  const fmtDate = (d) => {
+    const dt = new Date(d);
+    return dt.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  };
+  const start = fmtDate(startDate);
+  const end = endDate ? fmtDate(endDate) : 'ongoing';
+  return `${start} - ${end}`;
 };
 
 // Projects API
@@ -56,17 +73,18 @@ app.get('/api/projects', async (req, res) => {
 
 app.post('/api/projects', async (req, res) => {
   try {
-    const { name, client, type, period, totalAmount, receivedAmount, notes } = req.body;
+    const { name, client, type, startDate, endDate, totalAmount, receivedAmount, notes, statusOverride } = req.body;
     const id = uuidv4();
     const pendingAmount = totalAmount - receivedAmount;
-    const status = calculateStatus(pendingAmount, totalAmount);
+    const status = calculateStatus(pendingAmount, totalAmount, statusOverride);
+    const period = buildPeriod(startDate, endDate || null);
 
     await db.pool.query(
-      'INSERT INTO projects (id, name, client, type, period, totalAmount, receivedAmount, pendingAmount, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, name, client, type, period, totalAmount, receivedAmount, pendingAmount, status, notes]
+      'INSERT INTO projects (id, name, client, type, period, startDate, endDate, totalAmount, receivedAmount, pendingAmount, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, client, type, period, startDate || null, endDate || null, totalAmount, receivedAmount, pendingAmount, status, notes]
     );
 
-    res.status(201).json({ id, name, client, type, period, totalAmount, receivedAmount, pendingAmount, status, notes, transactions: [] });
+    res.status(201).json({ id, name, client, type, period, startDate: startDate || null, endDate: endDate || null, totalAmount, receivedAmount, pendingAmount, status, notes, transactions: [] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create project' });
@@ -76,17 +94,18 @@ app.post('/api/projects', async (req, res) => {
 app.put('/api/projects/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, client, type, period, totalAmount, receivedAmount, notes } = req.body;
+    const { name, client, type, startDate, endDate, totalAmount, receivedAmount, notes, statusOverride } = req.body;
     
     const pendingAmount = totalAmount - receivedAmount;
-    const status = calculateStatus(pendingAmount, totalAmount);
+    const status = calculateStatus(pendingAmount, totalAmount, statusOverride);
+    const period = buildPeriod(startDate, endDate || null);
 
     await db.pool.query(
-      'UPDATE projects SET name = ?, client = ?, type = ?, period = ?, totalAmount = ?, receivedAmount = ?, pendingAmount = ?, status = ?, notes = ? WHERE id = ?',
-      [name, client, type, period, totalAmount, receivedAmount, pendingAmount, status, notes, id]
+      'UPDATE projects SET name = ?, client = ?, type = ?, period = ?, startDate = ?, endDate = ?, totalAmount = ?, receivedAmount = ?, pendingAmount = ?, status = ?, notes = ? WHERE id = ?',
+      [name, client, type, period, startDate || null, endDate || null, totalAmount, receivedAmount, pendingAmount, status, notes, id]
     );
 
-    res.json({ id, name, client, type, period, totalAmount, receivedAmount, pendingAmount, status, notes });
+    res.json({ id, name, client, type, period, startDate: startDate || null, endDate: endDate || null, totalAmount, receivedAmount, pendingAmount, status, notes });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to update project' });
@@ -117,9 +136,9 @@ app.post('/api/transactions', async (req, res) => {
       [id, projectId, amount, type, date, notes]
     );
 
-    const [projects] = await connection.query('SELECT totalAmount, receivedAmount FROM projects WHERE id = ?', [projectId]);
+    const [projects] = await connection.query('SELECT totalAmount, receivedAmount, status FROM projects WHERE id = ?', [projectId]);
     if (projects.length > 0) {
-      let { totalAmount, receivedAmount } = projects[0];
+      let { totalAmount, receivedAmount, status } = projects[0];
       totalAmount = parseFloat(totalAmount);
       receivedAmount = parseFloat(receivedAmount);
       
@@ -128,11 +147,13 @@ app.post('/api/transactions', async (req, res) => {
       }
       
       const pendingAmount = totalAmount - receivedAmount;
-      const status = calculateStatus(pendingAmount, totalAmount);
+      const newStatus = status === 'Failed' && pendingAmount > 0
+        ? 'Failed'
+        : calculateStatus(pendingAmount, totalAmount);
 
       await connection.query(
         'UPDATE projects SET receivedAmount = ?, pendingAmount = ?, status = ? WHERE id = ?',
-        [receivedAmount, pendingAmount, status, projectId]
+        [receivedAmount, pendingAmount, newStatus, projectId]
       );
     }
 
@@ -161,9 +182,9 @@ app.delete('/api/transactions/:id', async (req, res) => {
 
     await connection.query('DELETE FROM transactions WHERE id = ?', [id]);
 
-    const [projects] = await connection.query('SELECT totalAmount, receivedAmount FROM projects WHERE id = ?', [projectId]);
+    const [projects] = await connection.query('SELECT totalAmount, receivedAmount, status FROM projects WHERE id = ?', [projectId]);
     if (projects.length > 0) {
-      let { totalAmount, receivedAmount } = projects[0];
+      let { totalAmount, receivedAmount, status } = projects[0];
       totalAmount = parseFloat(totalAmount);
       receivedAmount = parseFloat(receivedAmount);
       
@@ -172,11 +193,13 @@ app.delete('/api/transactions/:id', async (req, res) => {
       }
       
       const pendingAmount = totalAmount - receivedAmount;
-      const status = calculateStatus(pendingAmount, totalAmount);
+      const newStatus = status === 'Failed' && pendingAmount > 0
+        ? 'Failed'
+        : calculateStatus(pendingAmount, totalAmount);
 
       await connection.query(
         'UPDATE projects SET receivedAmount = ?, pendingAmount = ?, status = ? WHERE id = ?',
-        [receivedAmount, pendingAmount, status, projectId]
+        [receivedAmount, pendingAmount, newStatus, projectId]
       );
     }
 

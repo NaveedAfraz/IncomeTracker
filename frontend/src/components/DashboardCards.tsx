@@ -1,10 +1,10 @@
-import { Briefcase, IndianRupee, Wallet, CreditCard } from 'lucide-react';
+import { Briefcase, IndianRupee, Wallet, CreditCard, XCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/format';
 import type { DashboardStats } from '../types';
 
 interface DashboardCardsProps {
   stats: DashboardStats;
-  onCardClick: (type: 'workValue' | 'received' | 'pending' | 'projects') => void;
+  onCardClick: (type: 'workValue' | 'received' | 'pending' | 'projects' | 'failed') => void;
 }
 
 export const DashboardCards = ({ stats, onCardClick }: DashboardCardsProps) => {
@@ -31,10 +31,19 @@ export const DashboardCards = ({ stats, onCardClick }: DashboardCardsProps) => {
       type: 'pending' as const,
       title: 'Total Pending',
       value: formatCurrency(stats.totalPending),
-      icon: <Wallet className="w-6 h-6 text-rose-400" />,
-      bg: 'bg-rose-500/10',
-      border: 'border-rose-500/20',
-      glow: 'group-hover:shadow-[0_0_20px_rgba(244,63,94,0.2)] hover:border-rose-500/40 cursor-pointer',
+      icon: <Wallet className="w-6 h-6 text-amber-400" />,
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/20',
+      glow: 'group-hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:border-amber-500/40 cursor-pointer',
+    },
+    {
+      type: 'failed' as const,
+      title: 'Total Failed',
+      value: formatCurrency(stats.totalFailed),
+      icon: <XCircle className="w-6 h-6 text-red-400" />,
+      bg: 'bg-red-500/10',
+      border: 'border-red-500/20',
+      glow: 'group-hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:border-red-500/40 cursor-pointer',
     },
     {
       type: 'projects' as const,
@@ -48,7 +57,7 @@ export const DashboardCards = ({ stats, onCardClick }: DashboardCardsProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
       {cards.map((card, index) => (
         <div
           key={index}

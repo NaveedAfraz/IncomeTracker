@@ -19,6 +19,37 @@ interface ProjectsTableProps {
   onManageTransactions: (project: Project) => void;
 }
 
+const getProjectDateStatusBadge = (project: Project) => {
+  if (project.status === 'Completed') {
+    return <span className="text-[10px] text-zinc-500 bg-white/5 border border-white/5 px-2 py-0.5 rounded">Completed</span>;
+  }
+  if (project.status === 'Failed') {
+    return <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded">Failed</span>;
+  }
+  if (project.status === 'Ongoing' || !project.endDate) {
+    return <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">Ongoing</span>;
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(project.endDate);
+  end.setHours(0, 0, 0, 0);
+  
+  const diffTime = end.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded">Overdue {Math.abs(diffDays)}d</span>;
+  } else if (diffDays === 0) {
+    return <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded animate-pulse">Ends today</span>;
+  } else if (diffDays <= 7) {
+    return <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">{diffDays}d left</span>;
+  } else {
+    const weeks = Math.round(diffDays / 7);
+    return <span className="text-[10px] text-zinc-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded">{weeks}w left</span>;
+  }
+};
+
 export const ProjectsTable = ({ 
   projects, 
   searchTerm, 
@@ -52,6 +83,7 @@ export const ProjectsTable = ({
       case 'Pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'High Pending': return 'bg-rose-500/10 text-rose-400 border-rose-500/20 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.3)]';
       case 'Ongoing': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'Failed': return 'bg-red-500/10 text-red-400 border-red-500/20';
       default: return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
     }
   };
@@ -146,6 +178,7 @@ export const ProjectsTable = ({
                 <option className="bg-zinc-900" value="Pending">Pending</option>
                 <option className="bg-zinc-900" value="High Pending">High Pending</option>
                 <option className="bg-zinc-900" value="Ongoing">Ongoing</option>
+                <option className="bg-zinc-900" value="Failed">Failed</option>
               </select>
             </div>
             
@@ -228,6 +261,7 @@ export const ProjectsTable = ({
                         {project.type}
                       </span>
                       <span className="text-xs text-zinc-500">• {project.period}</span>
+                      {getProjectDateStatusBadge(project)}
                     </div>
                     {project.type !== 'College' && <span className="text-xs text-zinc-400">{project.client}</span>}
                     {project.notes && (
@@ -297,6 +331,7 @@ export const ProjectsTable = ({
                       {project.type}
                     </span>
                     <span className="text-[11px] text-zinc-500 font-medium truncate">{project.period}</span>
+                    {getProjectDateStatusBadge(project)}
                   </div>
                 </div>
                 <span className={cn("px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border whitespace-nowrap", getStatusColor(project.status))}>

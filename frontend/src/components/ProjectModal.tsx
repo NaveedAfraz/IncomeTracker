@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (project: Omit<Project, 'id' | 'pendingAmount' | 'status' | 'transactions'>) => void;
+  onSave: (project: Omit<Project, 'id' | 'pendingAmount' | 'status' | 'transactions'> & { statusOverride?: string }) => void;
   project?: Project;
 }
 
@@ -14,10 +14,13 @@ export const ProjectModal = ({ isOpen, onClose, onSave, project }: ProjectModalP
     name: '',
     client: '',
     type: 'Freelance' as ProjectType,
-    period: '',
+    startDate: '',
+    endDate: '',
+    isOngoing: true,
     totalAmount: '',
     receivedAmount: '',
-    notes: ''
+    notes: '',
+    statusOverride: 'auto'
   });
 
   useEffect(() => {
@@ -33,24 +36,35 @@ export const ProjectModal = ({ isOpen, onClose, onSave, project }: ProjectModalP
 
   useEffect(() => {
     if (project) {
+      // Convert stored DATE (YYYY-MM-DD) to YYYY-MM for month input
+      const toMonthVal = (d: string | null | undefined) => {
+        if (!d) return '';
+        return String(d).substring(0, 7); // "YYYY-MM"
+      };
       setFormData({
         name: project.name,
         client: project.client,
         type: project.type,
-        period: project.period,
+        startDate: toMonthVal(project.startDate),
+        endDate: toMonthVal(project.endDate),
+        isOngoing: !project.endDate,
         totalAmount: project.totalAmount.toString(),
         receivedAmount: project.receivedAmount.toString(),
-        notes: project.notes || ''
+        notes: project.notes || '',
+        statusOverride: project.status || 'auto'
       });
     } else {
       setFormData({
         name: '',
         client: '',
         type: 'Freelance',
-        period: '',
+        startDate: '',
+        endDate: '',
+        isOngoing: true,
         totalAmount: '',
         receivedAmount: '0',
-        notes: ''
+        notes: '',
+        statusOverride: 'auto'
       });
     }
   }, [project, isOpen]);
@@ -79,14 +93,25 @@ export const ProjectModal = ({ isOpen, onClose, onSave, project }: ProjectModalP
     e.preventDefault();
     if (!formData.name || !formData.client || !formData.totalAmount) return;
 
+    // Convert YYYY-MM to YYYY-MM-01 for backend DATE column
+    const toDateStr = (m: string) => m ? `${m}-01` : null;
+
+    let finalOverride = formData.statusOverride;
+    if (finalOverride === 'Completed' && pending > 0) {
+      finalOverride = 'auto';
+    }
+
     onSave({
       name: formData.name,
       client: formData.client,
       type: formData.type,
-      period: formData.period,
+      period: '', // backend generates this from startDate/endDate
+      startDate: toDateStr(formData.startDate),
+      endDate: formData.isOngoing ? null : toDateStr(formData.endDate),
       totalAmount: total,
       receivedAmount: received,
-      notes: formData.notes
+      notes: formData.notes,
+      ...(finalOverride !== 'auto' && { statusOverride: finalOverride })
     });
     onClose();
   };
@@ -151,15 +176,69 @@ export const ProjectModal = ({ isOpen, onClose, onSave, project }: ProjectModalP
               </select>
             </div>
 
+            {/* Timeline row: Start Date | Status Override */}
+            <div className="col-span-2 grid grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Start Date <span className="text-rose-500">*</span></label>
+                <input
+                  required
+                  type="month"
+                  className="w-full px-4 py-2.5 rounded-xl glass-input appearance-none bg-zinc-900 text-white [color-scheme:dark]"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Status Override</label>
+                <select
+                  className="w-full px-4 py-2.5 rounded-xl glass-input appearance-none bg-zinc-900"
+                  value={formData.statusOverride}
+                  onChange={(e) => setFormData({ ...formData, statusOverride: e.target.value })}
+                >
+                  <option value="auto">Auto (by amounts)</option>
+                  <option value="Ongoing">Ongoing</option>
+                  <option value="Pending">Pending</option>
+                  <option value="High Pending">High Pending</option>
+                  <option value="Completed" disabled={pending > 0}>
+                    Completed {pending > 0 ? '(Needs full payment)' : ''}
+                  </option>
+                  <option value="Failed">Failed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* End Date row with Ongoing toggle */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Timeline Period</label>
-              <input
-                type="text"
-                placeholder="e.g. Jan 2024 - Mar 2024"
-                className="w-full px-4 py-2.5 rounded-xl glass-input"
-                value={formData.period}
-                onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-zinc-300">End Date</label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-xs text-zinc-400">Ongoing</span>
+                  <div
+                    className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${
+                      formData.isOngoing ? 'bg-indigo-600' : 'bg-zinc-700'
+                    }`}
+                    onClick={() => setFormData({ ...formData, isOngoing: !formData.isOngoing })}
+                  >
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                      formData.isOngoing ? 'translate-x-4' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </label>
+              </div>
+              {formData.isOngoing ? (
+                <div className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-zinc-500 text-sm flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                  Present / Ongoing
+                </div>
+              ) : (
+                <input
+                  type="month"
+                  className="w-full px-4 py-2.5 rounded-xl glass-input appearance-none bg-zinc-900 text-white [color-scheme:dark]"
+                  value={formData.endDate}
+                  min={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                />
+              )}
             </div>
 
             <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-4 grid grid-cols-3 gap-4">

@@ -9,7 +9,8 @@ interface PaidPendingChartProps {
 export const PaidPendingChart = ({ stats }: PaidPendingChartProps) => {
   const data = [
     { name: 'Received', value: stats.totalReceived, color: '#34d399' }, // emerald-400
-    { name: 'Pending', value: stats.totalPending, color: '#fb7185' },   // rose-400
+    { name: 'Pending', value: stats.totalPending, color: '#fbbf24' },   // amber-400
+    { name: 'Failed', value: stats.totalFailed, color: '#ef4444' },     // red-500
   ];
 
   if (stats.totalWorkValue === 0) {

@@ -1,4 +1,4 @@
-export type ProjectStatus = 'Completed' | 'Pending' | 'High Pending' | 'Ongoing';
+export type ProjectStatus = 'Completed' | 'Pending' | 'High Pending' | 'Ongoing' | 'Failed';
 export type ProjectType = 'Freelance' | 'Internship' | 'College';
 export type TransactionType = 'Paid' | 'Due';
 
@@ -17,6 +17,8 @@ export interface Project {
   client: string;
   type: ProjectType;
   period: string;
+  startDate?: string | null;
+  endDate?: string | null;
   totalAmount: number;
   receivedAmount: number;
   pendingAmount: number;
@@ -30,5 +32,6 @@ export interface DashboardStats {
   totalWorkValue: number;
   totalReceived: number;
   totalPending: number;
+  totalFailed: number;
   numberOfProjects: number;
 }
