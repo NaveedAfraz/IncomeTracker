@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useGetProjectsQuery, useAddProjectMutation, useUpdateProjectMutation } from './store/api';
+import { useGetProjectsQuery, useAddProjectMutation, useUpdateProjectMutation, useDeleteProjectMutation } from './store/api';
 import { DashboardCards } from './components/DashboardCards';
 import { ProjectsTable } from './components/ProjectsTable';
 import { ProjectModal } from './components/ProjectModal';
@@ -16,6 +16,7 @@ function App() {
   const { data: projects = [], isLoading, error } = useGetProjectsQuery();
   const [addProject] = useAddProjectMutation();
   const [updateProject] = useUpdateProjectMutation();
+  const [deleteProject] = useDeleteProjectMutation();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
@@ -176,6 +177,22 @@ function App() {
     }
   };
 
+  const handleDeleteProject = async (idOrProject: string | Project) => {
+    const id = typeof idOrProject === 'string' ? idOrProject : idOrProject.id;
+    const name = typeof idOrProject === 'string' 
+      ? projects.find(p => p.id === id)?.name || 'this project' 
+      : idOrProject.name;
+
+    if (window.confirm(`Are you sure you want to delete "${name}"? All associated transactions will also be permanently deleted.`)) {
+      try {
+        await deleteProject(id).unwrap();
+        setIsModalOpen(false);
+      } catch (err) {
+        console.error('Failed to delete project:', err);
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-4">
@@ -284,6 +301,7 @@ function App() {
                   onAddProject={handleAddProject}
                   onEditProject={handleEditProject}
                   onManageTransactions={handleManageTransactions}
+                  onDeleteProject={handleDeleteProject}
                 />
               </div>
               <div className="lg:col-span-1 flex flex-col gap-6">
@@ -313,6 +331,7 @@ function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveProject}
+        onDelete={handleDeleteProject}
         project={editingProject}
       />
 

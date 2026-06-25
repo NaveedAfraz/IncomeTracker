@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Project } from '../types';
 import { formatCurrency, cn } from '../utils/format';
-import { ChevronDown, ChevronUp, Search, Plus, CreditCard, Filter, User } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Plus, CreditCard, Filter, User, Trash2 } from 'lucide-react';
 
 interface ProjectsTableProps {
   projects: Project[];
@@ -17,6 +17,7 @@ interface ProjectsTableProps {
   onAddProject: () => void;
   onEditProject: (project: Project) => void;
   onManageTransactions: (project: Project) => void;
+  onDeleteProject?: (project: Project) => void;
 }
 
 const getProjectDateStatusBadge = (project: Project) => {
@@ -63,7 +64,8 @@ export const ProjectsTable = ({
   availableYears,
   onAddProject, 
   onEditProject, 
-  onManageTransactions 
+  onManageTransactions,
+  onDeleteProject
 }: ProjectsTableProps) => {
   const [sortField, setSortField] = useState<keyof Project>('period');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -298,13 +300,24 @@ export const ProjectsTable = ({
                   </span>
                 </td>
                 <td className="px-6 py-5 text-right">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onManageTransactions(project); }}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-xl transition-all"
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    Payments
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onManageTransactions(project); }}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-xl transition-all"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      Payments
+                    </button>
+                    {onDeleteProject && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteProject(project); }}
+                        className="inline-flex items-center justify-center p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 rounded-xl transition-all"
+                        title="Delete project"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -370,13 +383,24 @@ export const ProjectsTable = ({
                   <User className="w-3.5 h-3.5 shrink-0" />
                   <span className="text-xs truncate font-medium">{project.client}</span>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onManageTransactions(project); }}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-lg"
-                >
-                  <CreditCard className="w-3 h-3" />
-                  Payments
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onManageTransactions(project); }}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-lg"
+                  >
+                    <CreditCard className="w-3.5 h-3" />
+                    Payments
+                  </button>
+                  {onDeleteProject && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteProject(project); }}
+                      className="flex items-center justify-center p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 rounded-lg transition-all"
+                      title="Delete project"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))

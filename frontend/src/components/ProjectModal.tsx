@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import type { Project, ProjectType } from '../types';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (project: Omit<Project, 'id' | 'pendingAmount' | 'status' | 'transactions'> & { statusOverride?: string }) => void;
+  onDelete?: (id: string) => void;
   project?: Project;
 }
 
-export const ProjectModal = ({ isOpen, onClose, onSave, project }: ProjectModalProps) => {
+export const ProjectModal = ({ isOpen, onClose, onSave, onDelete, project }: ProjectModalProps) => {
   const [formData, setFormData] = useState({
     name: '',
     client: '',
@@ -285,20 +286,34 @@ export const ProjectModal = ({ isOpen, onClose, onSave, project }: ProjectModalP
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.4)] hover:shadow-[0_0_25px_rgba(79,70,229,0.6)] rounded-xl transition-all duration-300"
-            >
-              {project ? 'Save Changes' : 'Launch Project'}
-            </button>
+          <div className="pt-4 flex items-center justify-between border-t border-white/10 gap-3">
+            {project && onDelete ? (
+              <button
+                type="button"
+                onClick={() => onDelete(project.id)}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 rounded-xl transition-all duration-300"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Project
+              </button>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 text-sm font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.4)] hover:shadow-[0_0_25px_rgba(79,70,229,0.6)] rounded-xl transition-all duration-300"
+              >
+                {project ? 'Save Changes' : 'Launch Project'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
