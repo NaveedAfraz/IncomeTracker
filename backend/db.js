@@ -36,8 +36,19 @@ const initDB = async () => {
     console.log('Connected to MySQL DB pool');
     
     await connection.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await connection.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id VARCHAR(36) PRIMARY KEY,
+        userId VARCHAR(36) NOT NULL,
         name VARCHAR(255) NOT NULL,
         client VARCHAR(255) NOT NULL,
         type VARCHAR(50) NOT NULL,
@@ -49,9 +60,31 @@ const initDB = async () => {
         pendingAmount DECIMAL(10, 2) NOT NULL,
         status VARCHAR(50) NOT NULL,
         notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
+
+    // Add userId column to existing projects table if it doesn't exist
+    const [projectCols] = await connection.query(
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'projects' AND COLUMN_NAME = 'userId'"
+    );
+    if (projectCols.length === 0) {
+      // First create a default system user if needed for existing data
+      const systemUserId = '00000000-0000-0000-0000-000000000001';
+      const [existingSystem] = await connection.query('SELECT id FROM users WHERE id = ?', [systemUserId]);
+      if (existingSystem.length === 0) {
+        const bcrypt = require('bcryptjs');
+        const hash = await bcrypt.hash('changeme123', 10);
+        await connection.query(
+          'INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)',
+          [systemUserId, 'Admin', 'admin@nexustrack.app', hash]
+        );
+        console.log('Created default admin user (admin@nexustrack.app / changeme123)');
+      }
+      await connection.query("ALTER TABLE projects ADD COLUMN userId VARCHAR(36) NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001' AFTER id");
+      console.log('Added userId column to projects');
+    }
 
     // Add startDate/endDate columns to existing tables if they don't exist
     const [cols] = await connection.query(`

@@ -1,5 +1,9 @@
 import { useState, useMemo } from 'react';
-import { useGetProjectsQuery, useAddProjectMutation, useUpdateProjectMutation, useDeleteProjectMutation } from './store/api';
+import { useSelector, useDispatch } from 'react-redux';
+import { api, useGetProjectsQuery, useAddProjectMutation, useUpdateProjectMutation, useDeleteProjectMutation } from './store/api';
+import { logout } from './store/authSlice';
+import type { RootState } from './store';
+import { AuthPage } from './components/AuthPage';
 import { DashboardCards } from './components/DashboardCards';
 import { ProjectsTable } from './components/ProjectsTable';
 import { ProjectModal } from './components/ProjectModal';
@@ -8,11 +12,29 @@ import { PaidPendingChart } from './components/PaidPendingChart';
 import { ProjectListModal } from './components/ProjectListModal';
 import { AnalyticsView } from './components/AnalyticsView';
 import { RecentActivity } from './components/RecentActivity';
-import { Activity, LayoutDashboard, Loader2 } from 'lucide-react';
+import { Activity, LayoutDashboard, Loader2, LogOut } from 'lucide-react';
 import { cn } from './utils/format';
 import type { Project } from './types';
 
 function App() {
+  const dispatch = useDispatch();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
+  // Show auth page if not logged in
+  if (!isAuthenticated) return <AuthPage />;
+
+  const handleLogout = () => {
+    dispatch(logout());
+    // Clear RTK Query cache so next user gets fresh data
+    dispatch(api.util.resetApiState());
+  };
+
+  return <AuthenticatedApp user={user} onLogout={handleLogout} />;
+}
+
+type AuthenticatedAppProps = { user: { name: string; email: string } | null; onLogout: () => void };
+
+function AuthenticatedApp({ user, onLogout }: AuthenticatedAppProps) {
   const { data: projects = [], isLoading, error } = useGetProjectsQuery();
   const [addProject] = useAddProjectMutation();
   const [updateProject] = useUpdateProjectMutation();
@@ -224,56 +246,86 @@ function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 selection:bg-indigo-500/30">
-      <nav className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
+      <nav className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-20 items-center">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('dashboard')}>
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-300"></div>
-                <div className="bg-zinc-900 border border-white/10 p-2.5 rounded-xl text-indigo-400 relative">
-                  <LayoutDashboard className="w-6 h-6" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight leading-none">
-                  Nexus<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Track</span>
-                </h1>
-                <p className="text-xs text-zinc-500 font-medium mt-1">Financial Intelligence</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
-                <button 
+          <div className="flex justify-between h-16 items-center">
+
+            {/* Brand */}
+            <button onClick={() => setView('dashboard')} className="flex items-center gap-2 group">
+              <span className="text-3xl font-bold tracking-tight text-white font-display">
+                Nexus<span className="text-indigo-400">Track</span>
+              </span>
+            </button>
+
+            {/* Right side */}
+            <div className="flex items-center gap-2">
+
+              {/* View toggle */}
+              <div className="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+                <button
                   onClick={() => setView('dashboard')}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2",
-                    view === 'dashboard' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-zinc-500 hover:text-white"
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                    view === 'dashboard'
+                      ? "bg-zinc-700 text-white"
+                      : "text-zinc-500 hover:text-zinc-300"
                   )}
                 >
-                  <LayoutDashboard className="w-4 h-4" />
+                  <LayoutDashboard className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Dashboard</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setView('analytics')}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2",
-                    view === 'analytics' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-zinc-500 hover:text-white"
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                    view === 'analytics'
+                      ? "bg-zinc-700 text-white"
+                      : "text-zinc-500 hover:text-zinc-300"
                   )}
                 >
-                  <Activity className="w-4 h-4" />
-                  <span className="hidden sm:inline">Intelligence</span>
+                  <Activity className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Analytics</span>
                 </button>
               </div>
-              
-              <div className="hidden lg:flex items-center gap-2 text-sm text-zinc-400 bg-white/5 px-4 py-2 rounded-full border border-white/5">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                System Online
+
+              {/* Divider */}
+              <div className="hidden lg:block w-px h-5 bg-zinc-800 mx-1" />
+
+              {/* Online indicator */}
+              <div className="hidden lg:flex items-center gap-1.5 text-xs text-zinc-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Online
               </div>
+
+              {/* Divider */}
+              <div className="hidden lg:block w-px h-5 bg-zinc-800 mx-1" />
+
+              {/* User */}
+              <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+                <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="hidden sm:block text-xs font-medium text-zinc-300 max-w-[100px] truncate">
+                  {user?.name || 'User'}
+                </span>
+              </div>
+
+              {/* Sign out */}
+              <button
+                id="logout-btn"
+                onClick={onLogout}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition-all"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+
             </div>
           </div>
         </div>
       </nav>
+
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {view === 'dashboard' ? (

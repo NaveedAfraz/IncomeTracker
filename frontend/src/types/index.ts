@@ -2,6 +2,12 @@ export type ProjectStatus = 'Completed' | 'Pending' | 'High Pending' | 'Ongoing'
 export type ProjectType = 'Freelance' | 'Internship' | 'College';
 export type TransactionType = 'Paid' | 'Due';
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Transaction {
   id: string;
   projectId: string;
